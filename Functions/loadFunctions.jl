@@ -1,12 +1,12 @@
-# Se cargan todas las funciones creadas
+# Load all created functions
 
-include("./boot.jl")                    # Inicializador para cargar todas las funciones
+include("./boot.jl")                    # Initializer to load all functions
 
-include("./limpiarTerminal.jl")         # Limpieza del terminal
-include("./elegirOpcion.jl")            # Elección y confirmación de la opción por parte del usuario
-include("./extraerDatos.jl")            # Estrae los datos del caso seleccionado y los guarda en SparseArrays
-include("./selectEstudio.jl")           # Elección del caso que se quiere estudiar
-include("./gestorResultados.jl")        # Gestiona el resultado obtenido de la optimización
+include("./clearTerminal.jl")           # Terminal cleaning
+include("./chooseOption.jl")            # User choice and confirmation of the option
+include("./extractData.jl")             # Extracts data from the selected case and stores it in SparseArrays
+include("./selectStudyCase.jl")         # Choice of the case to study
+include("./resultManager.jl")           # Manages the optimization result
 
-include("../OPF/LP_OPF/LP_OPF.jl")      # Función del Linear Programming - Optimal Power Flow
-include("../OPF/AC_OPF/AC_OPF.jl")      # Función del Alternating Current - Optimal Power Flow
+include("../OPF/LP_OPF/LP_OPF.jl")      # Linear Programming - Optimal Power Flow function
+include("../OPF/AC_OPF/AC_OPF.jl")      # Alternating Current - Optimal Power Flow function
