@@ -12,20 +12,20 @@ function boot()
     # With this simple network, the different OPFs are generated so they are already loaded when the user uses them
     
     println("Test 1...")
-    LP_OPF(test_line, test_generator, test_nodes, 2, 1, 100, "Gurobi")
+    LP_OPF(test_line, test_generator, test_nodes, 2, 1, 100, "Gurobi",1)
 
     clearTerminal()
 
     println("Test 1 - Completed")
     println("Test 2...")
-    LP_OPF(test_line, test_generator, test_nodes, 2, 1, 100, "HiGHS")
+    LP_OPF(test_line, test_generator, test_nodes, 2, 1, 100, "HiGHS",1)
 
     clearTerminal()
 
     println("Test 1 - Completed")
     println("Test 2 - Completed")
     println("Test 3...")
-    LP_OPF(test_line, test_generator, test_nodes, 2, 1, 100, "Ipopt")
+    LP_OPF(test_line, test_generator, test_nodes, 2, 1, 100, "Ipopt",1)
     mPath = "Functions/test_system/test_system.m"
     solve_opf(mPath, DCMPPowerModel, Ipopt.Optimizer)
 

@@ -34,11 +34,15 @@ while !endProgram
     data = extractData(case)
     println("Data extracted.")
 
+    # In a future version of this code, the number hours will be read depending the number of Demand matrixes.
+    # Change this line to analyze more hours (more hours requires more computer power)
+    hours = 3
+
     # Once the study case is selected, call the corresponding function to solve the optimization problem
     println("\nGenerating OPF...")
     # In case of an LP-OPF
     if opfType == "LP-OPF"
-        m, solGen, solFlows, solVoltage = LP_OPF(data[1], data[2], data[3], data[4], data[5], data[6], s)
+        m, solGen, solFlows, solVoltage = LP_OPF(data[1], data[2], data[3], data[4], data[5], data[6], s, hours)
 
     # In case of an AC-OPF
     elseif opfType == "AC-OPF"
