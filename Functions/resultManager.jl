@@ -1,11 +1,12 @@
 # This function manages the model variable and the DataFrames of the Optimization solution
 
-function resultManager(model, genSolution, flowSolution, voltageSolution, mFilePath, opfType, solver)
+function resultManager(model, genSolution, flowSolution, voltageSolution, solCosts, mFilePath, opfType, solver)
 
     # model: The model created for optimization
     # genSolution: DataFrame containing the generators' solution
     # flowSolution: DataFrame containing the flow solution
     # voltageSolution: DataFrame containing the voltage solution (magnitude and angle)
+    # solCosts: DataFrame containing solutions costs per hour and total sum of it
 
     # Clear the terminal
     clearTerminal()
@@ -78,6 +79,8 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, mFileP
                 DataFrames.show(flowSolution, allrows = true, allcols = true)
                 println("\n\nAngle solution:")
                 DataFrames.show(voltageSolution, allrows = true, allcols = true)
+                println("\n\nOperation Costs:")
+                DataFrames.show(solCosts, allrows = true, allcols = true)
                 println("") 
             else
                 println("\nResults will not be displayed")
@@ -86,13 +89,13 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, mFileP
             println("Tables are too large to display in the terminal")
         end
 
-        # Print the solution obtained with PowerModels.jl if applicable
+        # Print the solution obtained with PowerModels.jl if applicable (for las hour)
         if solution != 0
             println("Final cost obtained with PowerModels: ", round(solution["objective"], digits = 2), "€/h")
             println("Program execution time: ", solution["solve_time"] * 1000, " ms")
         end
 
-        println("\nFinal cost with the program: ", round(objective_value(model), digits = 2), " €/h")
+        println("\nFinal cost with the program: ", round(solCosts.operation_cost[end], digits = 2), " €/h")
         println("Program execution time: ", solve_time(model) * 1000, " ms")
         println("\nDo you want to save the results in a CSV file?")
         println("Press ENTER to confirm or any other input to deny")
@@ -108,6 +111,7 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, mFileP
                 CSV.write("./Results/voltageSolution.csv", voltageSolution, delim = ";")
                 CSV.write("./Results/lineFlowSolution.csv", flowSolution, delim = ";")
                 CSV.write("./Results/generatorSolution.csv", genSolution, delim = ";")
+                CSV.write("./Results/costsSolution.csv", solCosts, delim = ";")
                 println("\nThe results have been saved in ./Results")
             else
                 println("\nResults will not be saved")
