@@ -13,6 +13,12 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
 
     ########## DATA MANAGEMENT ##########
     P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand = dataManagerLP(dGen, dNodes, nN, bMVA)
+
+    # Now we dont have excel data to obtain Solar_PV and Wind. Thats why we include it here, just to 
+    # test how it will be the code. In the future Solar_PV and Wind will be data introduced in the program
+    # as dGen.
+    Solar_PV = dNodes.Solar_PV / bMVA  # Convertimos a unidades pu
+    Wind = dNodes.Wind / bMVA          # Convertimos a unidades pu
     
     # Line susceptance matrix
     B = susceptanceMatrix(dLine, nN, nL)
@@ -22,6 +28,7 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
     all_solFlows = DataFrames.DataFrame()
     all_solVoltage = DataFrames.DataFrame()
     costs_by_hour = DataFrames.DataFrame(hour = Int[], operation_cost = Float64[])
+    curtailment_results = DataFrames.DataFrame(hour = Int[], bus = Int[], P_Curt = Float64[])
 
     # At the moment, we will use the last model to be managed by the code as a result. This could be change in the future
     lastm = nothing
@@ -67,6 +74,9 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
         # and only the angle varies
         @variable(m, θ[1:nN], start = 0)
 
+        # We create the variables needed to stablish the curtailment. It represents Power that 
+        # wont will be used in the syste, for example, when Renewable power > Demand
+        @variable(m, P_Curt[i in 1:nN], start=0)
 
         ########## OBJECTIVE FUNCTION ##########
         # The objective is to minimize the total cost calculated as ∑cᵢ·Pᵢ
@@ -87,7 +97,12 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
         # If positive, the node supplies power to the grid;
         # if negative, it consumes power from the grid.
         # The right-hand side sums up all the flows passing through the node.
-        @constraint(m, [i in 1:nN], P_G[i] - P_Demand[i] == sum(B[i, j] * (θ[i] - θ[j]) for j in 1:nN))
+        @constraint(m, [i in 1:nN], P_G[i] + (Solar_PV[i] + Wind[i] - P_Curt[i]) - P_Demand[i] == sum(B[i, j] * (θ[i] - θ[j]) for j in 1:nN))
+
+
+        # We include constraints related to solar and Wind curtailment.
+        # In case PRES > Pdemand or line exchange could not transfer all necessary power
+        @constraint(m, [i in 1:nN], 0 <= P_Curt[i] <= Solar_PV[i] + Wind[i]) 
 
         # Maximum angle difference between two nodes connected by a line k
         for k in 1:nL
@@ -139,15 +154,7 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
             solFlows = DataFrames.DataFrame(hour = Int[], fbus = Int[], tbus = Int[], flow = Float64[])
             # The flow in the line connecting nodes i-j is equal to the susceptance of the line times the angle difference between nodes i-j
             # Pᵢⱼ = Bᵢⱼ · (θᵢ - θⱼ)
-            #=
-            for i in 1:nL
-                if value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) > 0
-                    push!(solFlows, Dict(:fbus => (dLine.fbus[i]), :tbus => (dLine.tbus[i]), :flow => round(value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) * bMVA, digits = 3)))
-                elseif value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) != 0
-                    push!(solFlows, Dict(:fbus => (dLine.tbus[i]), :tbus => (dLine.fbus[i]), :flow => round(value(B[dLine.tbus[i], dLine.fbus[i]] * (θ[dLine.tbus[i]] - θ[dLine.fbus[i]])) * bMVA, digits = 3)))
-                end
-            end
-            =#
+            
             for i in 1:nL
                 if value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) > 0
                     push!(solFlows, Dict(:hour => hour, :fbus => dLine.fbus[i], :tbus => dLine.tbus[i], :flow => round(value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) * bMVA, digits = 3)))
@@ -163,19 +170,26 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
             # Fourth column: angle value in degrees
             #solVoltage = DataFrames.DataFrame(bus = Int[], voltageNode = Float64[], angleDegrees = Float64[])
             solVoltage = DataFrames.DataFrame(hour = Int[], bus = Int[], voltageNode = Float64[], angleDegrees = Float64[])
-            #=
-            for i in 1:nN
-                push!(solVoltage, Dict(:bus => i, :voltageNode => 1,:angleDegrees => round(rad2deg(value(θ[i])), digits = 3)))
-            end
-            =#
+            
             for i in 1:nN
                 push!(solVoltage, Dict(:hour => hour, :bus => i, :voltageNode => 1, :angleDegrees => round(rad2deg(value(θ[i])), digits = 3)))
+            end
+
+            solCurt = DataFrames.DataFrame(hour = Int[], bus = Int[], P_curtailment = Float64[])
+            # Save curtailment
+            for i in 1:nN
+                push!(solCurt, Dict(
+                    :hour => hour,
+                    :bus => i,
+                    :P_curtailment => round(value(P_Curt[i]) * bMVA, digits = 3)
+                ))
             end
 
             # Append results to the lists
                 append!(all_solGen, solGen)
                 append!(all_solFlows, solFlows)
                 append!(all_solVoltage, solVoltage)
+                append!(curtailment_results, solCurt)
 
             ########## UPDATE THE MODEL ##########
             # we save the last model used
@@ -195,5 +209,5 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
     push!(costs_by_hour, (hour = -1, operation_cost = total_operation_cost))
 
     # Return the model "m" and the generated DataFrames for generation, flows, and angles
-    return lastm, all_solGen, all_solFlows, all_solVoltage, costs_by_hour
+    return lastm, all_solGen, all_solFlows, all_solVoltage, costs_by_hour, curtailment_results
 end
