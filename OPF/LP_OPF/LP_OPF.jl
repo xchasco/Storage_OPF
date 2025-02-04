@@ -1,7 +1,7 @@
 include("./Functions/dataManagerLP.jl")
 include("./Functions/susceptanceMatrix.jl")
 
-function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, nL::Int, bMVA::Int, solver::String, hours::Int) 
+function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN::Int, nL::Int, bMVA::Int, solver::String, hours::Int) 
 
     # dLine:    Line data
     # dGen:     Generator data
@@ -31,7 +31,7 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
 
         # Update dNodes to reflect demand for this hour (for now, we'll use the same)
         # Normally here you'd modify the demand for this hour
-        P_Demand = dataManagerLP(dGen, dNodes, nN, bMVA)[7]
+        P_Demand = dataManagerLP(dGen, dNodes, nN, bMVA)[7][hour]
 
         ########## INITIALIZE MODEL ##########
         # Create the "m" model with the JuMP.Model() function and
@@ -110,9 +110,9 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::DataFrame, nN::Int, n
 
         # Select a reference node (node type = 3)
         # Necessary for HiGHS to avoid an infinite loop during optimization
-        for i in 1:nrow(dNodes)
-            if dNodes.type[i] == 3
-                @constraint(m, θ[dNodes.bus_i[i]] == 0)
+        for i in 1:nrow(dNodes[hour])
+            if dNodes[hour].type[i] == 3
+                @constraint(m, θ[dNodes[hour].bus_i[i]] == 0)
             end
         end
 

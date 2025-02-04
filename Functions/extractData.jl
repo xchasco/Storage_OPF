@@ -5,8 +5,18 @@ function extractData(c::String)
     # Generator data
     generatorData = CSV.read("Cases/$c/generatorData.csv", DataFrame)
 
+    
     # Demand data
-    nodeData = CSV.read("Cases/$c/nodeData.csv", DataFrame)
+    demandPath = "Cases/$c/demandData/"
+
+    if isdir(demandPath)
+        #If the directory demandData exists, read all files nodeData_X.csv
+        nodeFiles = filter(x -> endswith(x, ".csv"), readdir(demandPath))  # CSV files list
+        nodeDataList = [CSV.read(joinpath(demandPath, file), DataFrame) for file in nodeFiles] # Here we create a list of DataFrames with each hourly file.
+    else
+        #If demanData doesnt exist, we read a single demand file
+        nodeDataList = CSV.read("Cases/$c/nodeData.csv", DataFrame)
+    end
 
     # Number of nodes
     nNodes = maximum([lineData.fbus; lineData.tbus])
@@ -26,6 +36,9 @@ function extractData(c::String)
         path = "None"
     end
 
+    #Analyzed hours
+    hours = length(nodeDataList)
+
     # Return all generated DataFrames and variables
-    return(lineData, generatorData, nodeData, nNodes, nLines, baseMVA, path)
+    return(lineData, generatorData, nodeDataList, nNodes, nLines, baseMVA, path, hours)
 end

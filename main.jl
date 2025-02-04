@@ -5,7 +5,7 @@ include("./Functions/loadLibraries.jl")
 include("./Functions/loadFunctions.jl")
 
 # First, tests are loaded for a faster solver load
-boot()
+# boot()
 
 # Variable for loop end
 endProgram = false
@@ -25,18 +25,17 @@ while !endProgram
     # Where:
     #   data[1] = line data
     #   data[2] = generator data
-    #   data[3] = demand data
+    #   data[3] = demand data as a list of Dataframes
     #   data[4] = number of nodes
     #   data[5] = number of lines
     #   data[6] = base power
     #   data[7] = path to the .m file of the case
+    #   data[8] = hours analyzed
     println("\nExtracting data...")
     data = extractData(case)
     println("Data extracted.")
 
-    # In a future version of this code, the number hours will be read depending the number of Demand matrixes.
-    # Change this line to analyze more hours (more hours requires more computer power)
-    hours = 3
+    hours = data[8]
 
     # Once the study case is selected, call the corresponding function to solve the optimization problem
     println("\nGenerating OPF...")
