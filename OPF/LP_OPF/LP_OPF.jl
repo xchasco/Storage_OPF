@@ -29,8 +29,7 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     ########## LOOP FOR HOURS ##########
     for hour in 1:hours
 
-        # Update dNodes to reflect demand for this hour (for now, we'll use the same)
-        # Normally here you'd modify the demand for this hour
+        # Select the demand of each hour
         P_Demand = dataManagerLP(dGen, dNodes, nN, bMVA)[7][hour]
 
         ########## INITIALIZE MODEL ##########
