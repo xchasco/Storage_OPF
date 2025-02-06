@@ -1,9 +1,10 @@
-function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, bMVA::Int)
+function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, bMVA::Int, hours::Int, dSolar::DataFrame)
 
     # Generator:    DataFrame containing generator data
     # Node:         List of DataFrames containing node data
     # nn:           Number of nodes
     # bMVA:         Base power
+    # dSolar        DataFrame containing solar generator data
 
     # The DataFrame passed as the "Generator" argument contains generator data from its corresponding file "generatorData.csv".
     # Explanation of sparsevec:
@@ -36,11 +37,17 @@ function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, b
 
     # The list of DataFrames passed as the "Node" argument contains demand data from its corresponding file "nodeData_X.csv".
     # P_Demand is a sparsevec of "nn" elements that collects:
-        # Indices: nodes where the demand is located "Node.bus_i"
-        # Values: demand at the respective nodes "Node.Pd"
+        # Indices: nodes where the demand is located "node.bus_i"
+        # Values: demand at the respective nodes "node.Pd"
     P_Demand = [SparseArrays.sparsevec(node.bus_i, node.Pd / bMVA, nn) for node in Node]
 
+    # The DataFrame passed as "dSolar" argument contains generated data from its corresponding file "solarData.csv".
+    # G_Solar is a sparsevec of "nn" elements that collects:
+        # Indices: nodes where the power is generated. dSolar.bus
+        # Values: power generated at the respective nodes
+    G_Solar = [SparseArrays.sparsevec(dSolar.bus, dSolar[!, Symbol("h$i")] / bMVA, nn) for i in hours]
+
     # The function returns all the generated SparseArrays as its output.
-    return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand
+    return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar
 
 end
