@@ -1,12 +1,13 @@
 # This function manages the model variable and the DataFrames of the Optimization solution
 
-function resultManager(model, genSolution, flowSolution, voltageSolution, solCosts, mFilePath, opfType, solver)
+function resultManager(model, genSolution, flowSolution, voltageSolution, solCosts, solCurt, mFilePath, opfType, solver)
 
     # model: The model created for optimization
     # genSolution: DataFrame containing the generators' solution
     # flowSolution: DataFrame containing the flow solution
     # voltageSolution: DataFrame containing the voltage solution (magnitude and angle)
     # solCosts: DataFrame containing solutions costs per hour and total sum of it
+    # solCurt: Dataframe containing renewable curtailment per hour
 
     # Clear the terminal
     clearTerminal()
@@ -82,6 +83,9 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, solCos
                 println("\n\nOperation Costs:")
                 DataFrames.show(solCosts, allrows = true, allcols = true)
                 println("") 
+                println("\n\nCurtailment Results:")
+                DataFrames.show(solCurt, allrows = true, allcols = true)
+                println("") 
             else
                 println("\nResults will not be displayed")
             end
@@ -112,6 +116,7 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, solCos
                 CSV.write("./Results/lineFlowSolution.csv", flowSolution, delim = ";")
                 CSV.write("./Results/generatorSolution.csv", genSolution, delim = ";")
                 CSV.write("./Results/costsSolution.csv", solCosts, delim = ";")
+                CSV.write("./Results/curtailmentSolution.csv", solCurt, delim = ";")
                 println("\nThe results have been saved in ./Results")
             else
                 println("\nResults will not be saved")
