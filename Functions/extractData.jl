@@ -24,6 +24,9 @@ function extractData(c::String)
     # Wind Gen data
     windData = CSV.read("Cases/$c/windData.csv", DataFrame)
 
+    # Battery data
+    storageData = CSV.read("Cases/$c/storage.csv", DataFrame)
+
     # Number of nodes
     nNodes = maximum([lineData.fbus; lineData.tbus])
 
@@ -46,5 +49,5 @@ function extractData(c::String)
     hours = length(nodeDataList)
 
     # Return all generated DataFrames and variables
-    return(lineData, generatorData, nodeDataList, nNodes, nLines, baseMVA, path, hours, solarData, windData)
+    return(lineData, generatorData, nodeDataList, nNodes, nLines, baseMVA, path, hours, solarData, windData, storageData)
 end
