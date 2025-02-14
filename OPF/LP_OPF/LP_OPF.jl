@@ -13,7 +13,7 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # dSolar:   Solar PV data
 
     ########## DATA MANAGEMENT ##########
-    P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_c, eta_d, P_s_c, P_s_d = dataManagerLP(dGen, dNodes, nN, bMVA, hours, dSolar, dWind, dStorage)
+    P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_c, eta_d, P_s_c_max, P_s_d_max = dataManagerLP(dGen, dNodes, nN, bMVA, hours, dSolar, dWind, dStorage)
     
     # Line susceptance matrix
     B = susceptanceMatrix(dLine, nN, nL)
@@ -119,7 +119,8 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         ### CURTAILMENT ###
         # We include constraints related to solar curtailment
         # In case PRES + Ebat(t) > Pdemand or line exchange could not transfer all necessary power
-        @constraint(m, [i in 1:nN], 0 <= P_Curt[i] <= max(0, G_Solar[i] + G_Wind[i] - P_s_c[i]))
+        @constraint(m, [i in 1:nN], 0 <= P_Curt[i])
+        @constraint(m, [i in 1:nN], P_Curt[i] <= G_Solar[i] + G_Wind[i] - P_s_c[i])
 
         ### ANGLE ###
         # Maximum angle difference between two nodes connected by a line k
@@ -161,15 +162,25 @@ function LP_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         @constraint(m, [i in 1:nN], E_s_min[i] <= E_s[i] <= E_s_max[i])
 
         #Energy storage dynamics
+        for i in 1:nN
+            if eta_d[i] == 0 # We need this "if" in order not to divide by zero in nodes without storage
+                eta_d[i] = 1
+            end
+        end
+
         @constraint(m, [i in 1:nN], E_s[i] == prev_E_s[i] + (eta_c[i] * P_s_c[i] - P_s_d[i] / eta_d[i]))
+        
+
 
         # The charge and discharge constrained by the power limits of those batteries.
         # y_s is a binary variable that indicates if the battery is charging or discharging
         # y_s = 1: discharging
         # y_s = 0: charging
-        @constraint(m, [i in 1:nN], 0 <= P_s_d[i] <= y_s[i] * P_s_d_max[i])
-        @constraint(m, [i in 1:nN], 0 <= P_s_c[i] <= (1 - y_s[i]) * P_s_c_max[i])
+        @constraint(m, [i in 1:nN], 0 <= P_s_d[i])
+        @constraint(m, [i in 1:nN], P_s_d[i] <= y_s[i] * P_s_d_max[i])
 
+        @constraint(m, [i in 1:nN], 0 <= P_s_c[i])
+        @constraint(m, [i in 1:nN], P_s_c[i] <= (1 - y_s[i]) * P_s_c_max[i])
         
         ########## SOLVING ##########
         JuMP.optimize!(m) # Optimization
