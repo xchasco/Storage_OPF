@@ -45,7 +45,7 @@ while !endProgram
     println("\nGenerating OPF...")
     # In case of an LP-OPF
     if opfType == "LP-OPF"
-        m, solGen, solFlows, solVoltage, solCosts, solCurt = LP_OPF(data[1], data[2], data[3], data[4], data[5], data[6], s, hours, data[9], data[10])
+        m, solGen, solFlows, solVoltage, solCosts, solCurt = LP_OPF(data[1], data[2], data[3], data[4], data[5], data[6], s, hours, data[9], data[10], data[11])
 
     # In case of an AC-OPF
     elseif opfType == "AC-OPF"

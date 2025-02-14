@@ -1,10 +1,12 @@
-function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, bMVA::Int, hours::Int, dSolar::DataFrame, dWind::DataFrame)
+function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, bMVA::Int, hours::Int, dSolar::DataFrame, dWind::DataFrame, dStorage::DataFrame)
 
     # Generator:    DataFrame containing generator data
     # Node:         List of DataFrames containing node data
     # nn:           Number of nodes
     # bMVA:         Base power
     # dSolar        DataFrame containing solar generator data
+    # dWind         DataFrame containing wind generator data
+    # dStorage      DataFrame containing storage data
 
     # The DataFrame passed as the "Generator" argument contains generator data from its corresponding file "generatorData.csv".
     # Explanation of sparsevec:
@@ -54,7 +56,18 @@ function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, b
         # Values: power generated at the respective nodes
     G_Wind = [SparseArrays.sparsevec(dWind.bus, dWind[!, Symbol("h$h")] / bMVA, nn) for h in 1:hours]
 
+    # The DataFrame passed as "dStorage" argument contains generated data from its corresponding file "storage.csv".
+    # P_Wind is a sparsevec of "nn" elements that collects:
+    E_s_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Emax, nn)
+    E_s_min = SparseArrays.sparsevec(dStorage.bus, dStorage.Emin, nn)
+
+    eta_charge = SparseArrays.sparsevec(dStorage.bus, dStorage.eta_c, nn)
+    eta_discharge = SparseArrays.sparsevec(dStorage.bus, dStorage.eta_d, nn)
+
+    P_charge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pcmax, nn)
+    P_discharge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pdmax, nn)
+
     # The function returns all the generated SparseArrays as its output.
-    return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind
+    return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_charge, eta_discharge, P_charge_max, P_discharge_max
 
 end
