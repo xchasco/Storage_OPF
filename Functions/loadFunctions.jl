@@ -8,5 +8,5 @@ include("./extractData.jl")             # Extracts data from the selected case a
 include("./selectStudyCase.jl")         # Choice of the case to study
 include("./resultManager.jl")           # Manages the optimization result
 
-include("../OPF/LP_OPF/LP_OPF.jl")      # Linear Programming - Optimal Power Flow function
+include("../OPF/DC_OPF/DC_OPF.jl")      # Linear Programming - Optimal Power Flow function
 include("../OPF/AC_OPF/AC_OPF.jl")      # Alternating Current - Optimal Power Flow function
