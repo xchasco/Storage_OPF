@@ -60,14 +60,14 @@ function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, b
 
     # The DataFrame passed as "dStorage" argument contains generated data from its corresponding file "storage.csv".
     # P_Wind is a sparsevec of "nn" elements that collects:
-    E_s_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Emax, nn)
-    E_s_min = SparseArrays.sparsevec(dStorage.bus, dStorage.Emin, nn)
+    E_s_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Emax / bMVA, nn)
+    E_s_min = SparseArrays.sparsevec(dStorage.bus, dStorage.Emin / bMVA, nn)
 
     eta_charge = SparseArrays.sparsevec(dStorage.bus, dStorage.eta_c, nn)
     eta_discharge = SparseArrays.sparsevec(dStorage.bus, dStorage.eta_d, nn)
 
-    P_charge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pcmax, nn)
-    P_discharge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pdmax, nn)
+    P_charge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pcmax / bMVA, nn)
+    P_discharge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pdmax / bMVA, nn)
 
     # The function returns all the generated SparseArrays as its output.
     return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_charge, eta_discharge, P_charge_max, P_discharge_max

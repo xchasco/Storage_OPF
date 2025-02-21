@@ -98,19 +98,19 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # If positive, the node supplies power to the grid;
     # if negative, it consumes power from the grid.
     # The right-hand side sums up all the flows passing through the node.
-    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] .+ (G_Solar[i, t] .+ G_Wind[i, t] .- P_Curt[i, t]) .+ (P_s_d[i, t] .- P_s_c[i, t]) .- P_Demand[i, t] .== sum(B[i, j] * (θ[i, t] .- θ[j, t]) for j in 1:nN))
+    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] + (G_Solar[i, t] + G_Wind[i, t] - P_Curt[i, t]) + (P_s_d[i, t] - P_s_c[i, t]) - P_Demand[i, t] == sum(B[i, j] * (θ[i, t] - θ[j, t]) for j in 1:nN))
 
     ### CURTAILMENT ###
     # We include constraints related to solar curtailment
     # In case PRES + Ebat(t) > Pdemand or line exchange could not transfer all necessary power
     @constraint(m, [i in 1:nN, t in 1:hours], 0 <= P_Curt[i,t])
-    @constraint(m, [i in 1:nN, t in 1:hours], P_Curt[i,t] <= G_Solar[i,t] + G_Wind[i,t] - P_s_c[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], P_Curt[i,t] <= G_Solar[i,t] + G_Wind[i,t])
 
     ### ANGLE ###
     # Maximum angle difference between two nodes connected by a line k
     for k in 1:nL
         if dLine.status[k] != 0
-            @constraint(m, [t in 1:hours], deg2rad(dLine.angmin[k]) <= θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t] <= deg2rad(dLine.angmax[k])) ## AÑADIR TEMPORALIDAD AQUÍ?¿?¿
+            @constraint(m, [t in 1:hours], deg2rad(dLine.angmin[k]) <= θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t] <= deg2rad(dLine.angmax[k]))
         end
     end
 
@@ -154,7 +154,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     end
 
     for i in 1:nN
-        @constraint(m, [i in 1:nN], E_s[i,0] == 0) #Necesario para tener un estado inicial de carga de las baterías. MODIFICAR ESTO PARA QUE PUEDA SER LEÍDO POR EL CÓDIGO AL PRINCIPIO
+        @constraint(m, [i in 1:nN], E_s[i,0] == 0)
     end
 
     @constraint(m, [i in 1:nN, t in 1:hours], E_s[i,t] == E_s[i,t-1] + (eta_c[i] * P_s_c[i,t] - P_s_d[i,t] / eta_d[i]))
@@ -232,8 +232,8 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
                 push!(solStorage, Dict(
                     :hour => t,
                     :bus => i,
-                    :E_i => round(value(E_s[i, t-1]), digits = 3),
-                    :E_s => round(value(E_s[i, t]), digits = 3)
+                    :E_i => round(value(E_s[i, t-1]) * bMVA, digits = 3),
+                    :E_s => round(value(E_s[i, t]) * bMVA, digits = 3)
                 ))
             end
 
