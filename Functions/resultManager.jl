@@ -1,6 +1,6 @@
 # This function manages the model variable and the DataFrames of the Optimization solution
 
-function resultManager(model, genSolution, flowSolution, voltageSolution, solCosts, solCurt, mFilePath, opfType, solver)
+function resultManager(model, genSolution, flowSolution, voltageSolution, solCosts, solCurt, solStorage, mFilePath, opfType, solver)
 
     # model: The model created for optimization
     # genSolution: DataFrame containing the generators' solution
@@ -85,7 +85,9 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, solCos
                 println("") 
                 println("\n\nCurtailment Results:")
                 DataFrames.show(solCurt, allrows = true, allcols = true)
-                println("") 
+                println("")
+                println("\n\nStorage Results:")
+                DataFrames.show(solStorage, allrows = true, allcols = true)
             else
                 println("\nResults will not be displayed")
             end
@@ -117,6 +119,7 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, solCos
                 CSV.write("./Results/generatorSolution.csv", genSolution, delim = ";")
                 CSV.write("./Results/costsSolution.csv", solCosts, delim = ";")
                 CSV.write("./Results/curtailmentSolution.csv", solCurt, delim = ";")
+                CSV.write("./Results/storageSolution.csv", solStorage, delim = ";")
                 println("\nThe results have been saved in ./Results")
             else
                 println("\nResults will not be saved")

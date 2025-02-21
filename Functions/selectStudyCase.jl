@@ -8,11 +8,11 @@ function selectStudyCase()
         selectedCase = chooseOption(caseList, "case")
 
         # List of OPF types available for selection
-        opfTypeList = ["LP-OPF", "AC-OPF"]
+        opfTypeList = ["DC-OPF", "AC-OPF"]
         opfType = chooseOption(opfTypeList, "type of OPF")
 
         # Based on the selected OPF type, ask for the solver to be used
-        if opfType == "LP-OPF"
+        if opfType == "DC-OPF"
             lpSolversList = ["Gurobi", "HiGHS", "Ipopt"]
             solver = chooseOption(lpSolversList, "solver")
 

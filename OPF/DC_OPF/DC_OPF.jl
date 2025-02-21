@@ -68,7 +68,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     @variable(m, P_Curt[i in 1:nN, t in 1:hours], start = 0)
 
     # Energy storage variables
-    @variable(m, E_s[i in 1:nN, t in 1:hours], start = 0)
+    @variable(m, E_s[i in 1:nN, t in 0:hours], start = 0)
 
     # Power of charging and discharging of the storage
     @variable(m, P_s_c[i in 1:nN, t in 1:hours], start = 0)
@@ -98,7 +98,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # If positive, the node supplies power to the grid;
     # if negative, it consumes power from the grid.
     # The right-hand side sums up all the flows passing through the node.
-    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] + (G_Solar[i, t] + G_Wind[i, t] - P_Curt[i, t]) + (P_s_d[i, t] - P_s_c[i, t]) - P_Demand[i, t] == sum(B[i, j] * (θ[i, t] - θ[j, t]) for j in 1:nN))
+    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] .+ (G_Solar[i, t] .+ G_Wind[i, t] .- P_Curt[i, t]) .+ (P_s_d[i, t] .- P_s_c[i, t]) .- P_Demand[i, t] .== sum(B[i, j] * (θ[i, t] .- θ[j, t]) for j in 1:nN))
 
     ### CURTAILMENT ###
     # We include constraints related to solar curtailment
@@ -110,7 +110,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Maximum angle difference between two nodes connected by a line k
     for k in 1:nL
         if dLine.status[k] != 0
-            @constraint(m, [t in 1:hours], deg2rad(dLine.angmin[k,t]) <= θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t] <= deg2rad(dLine.angmax[k,t])) ## AÑADIR TEMPORALIDAD AQUÍ?¿?¿
+            @constraint(m, [t in 1:hours], deg2rad(dLine.angmin[k]) <= θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t] <= deg2rad(dLine.angmax[k])) ## AÑADIR TEMPORALIDAD AQUÍ?¿?¿
         end
     end
 
@@ -121,14 +121,14 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Its absolute value must be less than the maximum power flow "dLine.rateA"
     for k in 1:nL
         if dLine.status[k] != 0
-            @constraint(m, [t in 1:hours],-dLine.rateA[k,t] / bMVA <= B[dLine.fbus[k], dLine.tbus[k]] * (θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t]) <= dLine.rateA[k,t] / bMVA)
+            @constraint(m, [t in 1:hours],-dLine.rateA[k] / bMVA <= B[dLine.fbus[k], dLine.tbus[k]] * (θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t]) <= dLine.rateA[k] / bMVA)
         end
     end
 
 
     ### "THERMAL" GENERATOR LIMITS ###
     # Minimum and maximum power generation considering the generator status
-    @constraint(m, [i in 1:nN, t in 1:hours], P_Gen_lb[i,t] * Gen_Status[i,t] <= P_G[i,t] <= P_Gen_ub[i,t] * Gen_Status[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], P_Gen_lb[i] * Gen_Status[i] <= P_G[i,t] <= P_Gen_ub[i] * Gen_Status[i])
 
 
     ### REFERENCE NODE ###
@@ -142,35 +142,32 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         end
     end
 
-
     ### STORAGE ###
     # Energy storage limits
-    @constraint(m, [i in 1:nN, t in 1:hours], E_s_min[i,t] <= E_s[i,t] <= E_s_max[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], E_s_min[i] <= E_s[i,t] <= E_s_max[i])
 
     #Energy storage dynamics
-    for t in 1:hours
-        for i in 1:nN
-            if eta_d[i,t] == 0 # We need this "if" in order not to divide by zero in nodes without storage
-                eta_d[i,t] = 1
-            end
+    for i in 1:nN
+        if eta_d[i] == 0 # We need this "if" in order not to divide by zero in nodes without storage
+            eta_d[i] = 1
         end
     end
 
     for i in 1:nN
-        E_s[i,0] = 0 #Necesario para tener un estado inicial de carga de las baterías. MODIFICAR ESTO PARA QUE PUEDA SER LEÍDO POR EL CÓDIGO AL PRINCIPIO
+        @constraint(m, [i in 1:nN], E_s[i,0] == 0) #Necesario para tener un estado inicial de carga de las baterías. MODIFICAR ESTO PARA QUE PUEDA SER LEÍDO POR EL CÓDIGO AL PRINCIPIO
     end
 
-    @constraint(m, [i in 1:nN, t in 1:hours], E_s[i,t] == E_s[i,t-1] + (eta_c[i,t] * P_s_c[i,t] - P_s_d[i,t] / eta_d[i,t]))
+    @constraint(m, [i in 1:nN, t in 1:hours], E_s[i,t] == E_s[i,t-1] + (eta_c[i] * P_s_c[i,t] - P_s_d[i,t] / eta_d[i]))
     
     # The charge and discharge constrained by the power limits of those batteries.
     # y_s is a binary variable that indicates if the battery is charging or discharging
     # y_s = 1: discharging
     # y_s = 0: charging
     @constraint(m, [i in 1:nN, t in 1:hours], 0 <= P_s_d[i,t])
-    @constraint(m, [i in 1:nN, t in 1:hours], P_s_d[i,t] <= y_s[i,t] * P_s_d_max[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], P_s_d[i,t] <= y_s[i,t] * P_s_d_max[i])
 
     @constraint(m, [i in 1:nN, t in 1:hours], 0 <= P_s_c[i,t])
-    @constraint(m, [i in 1:nN, t in 1:hours], P_s_c[i,t] <= (1 - y_s[i,t]) * P_s_c_max[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], P_s_c[i,t] <= (1 - y_s[i,t]) * P_s_c_max[i])
     
     ########## SOLVING ##########
     JuMP.optimize!(m) # Optimization
@@ -195,15 +192,17 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
             # First column: originating node
             # Second column: destination node
             # Third column: power flow value in the line
+            solFlows = DataFrames.DataFrame(hour = Int[], fbus = Int[], tbus = Int[], flow = Float64[])
             for i in 1:nL
                 flow_value = value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i], t] - θ[dLine.tbus[i], t]) * bMVA)
                 if flow_value > 0
                     push!(solFlows, Dict(:hour => t, :fbus => dLine.fbus[i], :tbus => dLine.tbus[i], :flow => round(value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) * bMVA, digits = 3)))
                 elseif flow_value != 0
-                    push!(solFlows, Dict(:hour => hour, :fbus => dLine.tbus[i], :tbus => dLine.fbus[i], :flow => round(value(B[dLine.tbus[i], dLine.fbus[i]] * (θ[dLine.tbus[i]] - θ[dLine.fbus[i]])) * bMVA, digits = 3)))
+                    push!(solFlows, Dict(:hour => t, :fbus => dLine.tbus[i], :tbus => dLine.fbus[i], :flow => round(value(B[dLine.tbus[i], dLine.fbus[i]] * (θ[dLine.tbus[i]] - θ[dLine.fbus[i]])) * bMVA, digits = 3)))
                 end
             end
 
+            solVoltage = DataFrames.DataFrame(hour = Int[], bus = Int[], voltageNode = Float64[], angleDegrees = Float64[])
             # solVoltage stores the voltage magnitude and angle
             # First column: hour
             # Second column: node
@@ -214,7 +213,6 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
             end
 
             solCurt = DataFrames.DataFrame(hour = Int[], bus = Int[], P_curtailment = Float64[])
-
             # solCurt stores the curtailment of each node
             for i in 1:nN
                 push!(solCurt, Dict(
@@ -229,8 +227,9 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
             # Second column: node
             # Third column: initial energy
             # Fourth column: final energy
+            solStorage = DataFrames.DataFrame(hour = Int[], bus = Int[], E_i = Float64[], E_s = Float64[])
             for i in 1:nN
-                push!(storage_results, Dict(
+                push!(solStorage, Dict(
                     :hour => t,
                     :bus => i,
                     :E_i => round(value(E_s[i, t-1]), digits = 3),
@@ -243,6 +242,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
                 append!(all_solFlows, solFlows)
                 append!(all_solVoltage, solVoltage)
                 append!(curtailment_results, solCurt)
+                append!(storage_results, solStorage)
 
             ########## UPDATE THE MODEL ##########
             # we save the last model used
@@ -262,5 +262,5 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     push!(costs_by_hour, (hour = -1, operation_cost = objective_value(m)))
 
     # Return the model "m" and the generated DataFrames for generation, flows, and angles
-    return lastm, all_solGen, all_solFlows, all_solVoltage, costs_by_hour, curtailment_results
+    return lastm, all_solGen, all_solFlows, all_solVoltage, costs_by_hour, curtailment_results, storage_results
 end

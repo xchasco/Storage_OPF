@@ -41,20 +41,22 @@ function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, b
     # P_Demand is a sparsevec of "nn" elements that collects:
         # Indices: nodes where the demand is located "node.bus_i"
         # Values: demand at the respective nodes "node.Pd"
-    P_Demand = [SparseArrays.sparsevec(node.bus_i, node.Pd / bMVA, nn) for node in Node]
-
+    P_DemandV = [SparseArrays.sparsevec(node.bus_i, node.Pd / bMVA, nn) for node in Node]
+    P_Demand = hcat(P_DemandV...) #We convert the list of sparsevecs into a matrix.
 
     # The DataFrame passed as "dSolar" argument contains generated data from its corresponding file "solarData.csv".
     # G_Solar is a sparsevec of "nn" elements that collects:
         # Indices: nodes where the power is generated. dSolar.bus
         # Values: power generated at the respective nodes
-    G_Solar = [SparseArrays.sparsevec(dSolar.bus, dSolar[!, Symbol("h$h")] / bMVA, nn) for h in 1:hours]
+    G_SolarV = [SparseArrays.sparsevec(dSolar.bus, dSolar[!, Symbol("h$h")] / bMVA, nn) for h in 1:hours]
+    G_Solar = hcat(G_SolarV...) #We convert the list of sparsevecs into a matrix.
 
     # The DataFrame passed as "dWind" argument contains generated data from its corresponding file "windData.csv".
     # G_Wind is a sparsevec of "nn" elements that collects:
         # Indices: nodes where the power is generated. dWind.bus
         # Values: power generated at the respective nodes
-    G_Wind = [SparseArrays.sparsevec(dWind.bus, dWind[!, Symbol("h$h")] / bMVA, nn) for h in 1:hours]
+    G_WindV = [SparseArrays.sparsevec(dWind.bus, dWind[!, Symbol("h$h")] / bMVA, nn) for h in 1:hours]
+    G_Wind = hcat(G_WindV...) #We convert the list of sparsevecs into a matrix.
 
     # The DataFrame passed as "dStorage" argument contains generated data from its corresponding file "storage.csv".
     # P_Wind is a sparsevec of "nn" elements that collects:

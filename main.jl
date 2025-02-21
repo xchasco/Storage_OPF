@@ -45,7 +45,7 @@ while !endProgram
     println("\nGenerating OPF...")
     # In case of an DC-OPF
     if opfType == "DC-OPF"
-        m, solGen, solFlows, solVoltage, solCosts, solCurt = DC_OPF(data[1], data[2], data[3], data[4], data[5], data[6], s, hours, data[9], data[10], data[11])
+        m, solGen, solFlows, solVoltage, solCosts, solCurt, solStorage = DC_OPF(data[1], data[2], data[3], data[4], data[5], data[6], s, hours, data[9], data[10], data[11])
 
     # In case of an AC-OPF
     elseif opfType == "AC-OPF"
@@ -62,7 +62,7 @@ while !endProgram
 
     # Optimization results management
     println("Problem solved")
-    resultManager(m, solGen, solFlows, solVoltage, solCosts, solCurt, data[7], opfType, s)
+    resultManager(m, solGen, solFlows, solVoltage, solCosts, solCurt, solStorage, data[7], opfType, s)
 
     # Ask the user if they want to continue the loop to study another case
     println("\nPress ENTER to continue or any other input to exit.")
