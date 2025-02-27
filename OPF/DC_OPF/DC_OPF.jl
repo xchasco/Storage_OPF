@@ -77,6 +77,27 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Binary variable to indicate if the battery is charging or discharging
     @variable(m, y_s[i in 1:nN, t in 1:hours], Bin)
 
+    ###CONSTANTS MODIFICATIONS###
+    # We need to modify the constants to be able to use them in the model, including temporal variable
+    angmin_k_t = Dict((k,t) => deg2rad(dLine.angmin[k]) for k in 1:nL, t in 1:hours)
+    angmax_k_t = Dict((k,t) => deg2rad(dLine.angmax[k]) for k in 1:nL, t in 1:hours)
+
+    rateA_k_t = Dict((k,t) => dLine.rateA[k] for k in 1:nL, t in 1:hours)
+
+    B_k_t = Dict((k,t) => B[dLine.fbus[k], dLine.tbus[k]] for k in 1:nL, t in 1:hours)
+    B_t = Dict((i, j, t) => B[i, j] for i in 1:nN, j in 1:nN, t in 1:hours)
+
+    P_Gen_lb_t = Dict((i,t) => P_Gen_lb[i] for i in 1:nN, t in 1:hours)
+    P_Gen_ub_t = Dict((i,t) => P_Gen_ub[i] for i in 1:nN, t in 1:hours)
+
+    Gen_Status_t = Dict((i,t) => Gen_Status[i] for i in 1:nN, t in 1:hours)
+
+    E_s_min_t = Dict((i,t) => E_s_min[i] for i in 1:nN, t in 1:hours)
+    E_s_max_t = Dict((i,t) => E_s_max[i] for i in 1:nN, t in 1:hours)
+
+    eta_c_t = Dict((i,t) => eta_c[i] for i in 1:nN, t in 1:hours)
+    eta_d_t = Dict((i,t) => eta_d[i] for i in 1:nN, t in 1:hours)
+
     ########## OBJECTIVE FUNCTION ##########
     # The objective is to minimize the total cost calculated as ∑cᵢ·Pᵢ
     # Where:
@@ -98,7 +119,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # If positive, the node supplies power to the grid;
     # if negative, it consumes power from the grid.
     # The right-hand side sums up all the flows passing through the node.
-    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] + (G_Solar[i, t] + G_Wind[i, t] - P_Curt[i, t]) + (P_s_d[i, t] - P_s_c[i, t]) - P_Demand[i, t] == sum(B[i, j] * (θ[i, t] - θ[j, t]) for j in 1:nN))
+    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] + (G_Solar[i, t] + G_Wind[i, t] - P_Curt[i, t]) + (P_s_d[i, t] - P_s_c[i, t]) - P_Demand[i, t] == sum(B_t[i, j, t] * (θ[i, t] - θ[j, t]) for j in 1:nN))
 
     ### CURTAILMENT ###
     # We include constraints related to solar curtailment
@@ -110,7 +131,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Maximum angle difference between two nodes connected by a line k
     for k in 1:nL
         if dLine.status[k] != 0
-            @constraint(m, [t in 1:hours], deg2rad(dLine.angmin[k]) <= θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t] <= deg2rad(dLine.angmax[k]))
+            @constraint(m, [t in 1:hours], angmin_k_t[k,t] <= θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t] <= angmax_k_t[k,t])
         end
     end
 
@@ -121,14 +142,14 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Its absolute value must be less than the maximum power flow "dLine.rateA"
     for k in 1:nL
         if dLine.status[k] != 0
-            @constraint(m, [t in 1:hours],-dLine.rateA[k] / bMVA <= B[dLine.fbus[k], dLine.tbus[k]] * (θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t]) <= dLine.rateA[k] / bMVA)
+            @constraint(m, [t in 1:hours], -rateA_k_t[k,t] / bMVA <= B_k_t[k,t] * (θ[dLine.fbus[k],t] - θ[dLine.tbus[k],t]) <= rateA_k_t[k,t] / bMVA)
         end
     end
 
 
     ### "THERMAL" GENERATOR LIMITS ###
     # Minimum and maximum power generation considering the generator status
-    @constraint(m, [i in 1:nN, t in 1:hours], P_Gen_lb[i] * Gen_Status[i] <= P_G[i,t] <= P_Gen_ub[i] * Gen_Status[i])
+    @constraint(m, [i in 1:nN, t in 1:hours], P_Gen_lb_t[i,t] * Gen_Status_t[i,t] <= P_G[i,t] <= P_Gen_ub_t[i,t] * Gen_Status_t[i,t])
 
 
     ### REFERENCE NODE ###
@@ -144,12 +165,14 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
 
     ### STORAGE ###
     # Energy storage limits
-    @constraint(m, [i in 1:nN, t in 1:hours], E_s_min[i] <= E_s[i,t] <= E_s_max[i])
+    @constraint(m, [i in 1:nN, t in 1:hours], E_s_min_t[i,t] <= E_s[i,t] <= E_s_max_t[i,t])
 
     #Energy storage dynamics
     for i in 1:nN
-        if eta_d[i] == 0 # We need this "if" in order not to divide by zero in nodes without storage
-            eta_d[i] = 1
+        for t in 1:hours
+            if eta_d_t[i,t] == 0 # We need this "if" in order not to divide by zero in nodes without storage
+                eta_d_t[i,t] = 1
+            end
         end
     end
 
@@ -157,7 +180,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         @constraint(m, [i in 1:nN], E_s[i,0] == 0)
     end
 
-    @constraint(m, [i in 1:nN, t in 1:hours], E_s[i,t] == E_s[i,t-1] + (eta_c[i] * P_s_c[i,t] - P_s_d[i,t] / eta_d[i]))
+    @constraint(m, [i in 1:nN, t in 1:hours], E_s[i,t] == E_s[i,t-1] + ((eta_c_t[i,t] * P_s_c[i,t]) - (P_s_d[i,t] / eta_d_t[i,t])))
     
     # The charge and discharge constrained by the power limits of those batteries.
     # y_s is a binary variable that indicates if the battery is charging or discharging
