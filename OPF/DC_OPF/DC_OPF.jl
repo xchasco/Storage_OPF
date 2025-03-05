@@ -216,6 +216,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
             # Second column: destination node
             # Third column: power flow value in the line
             solFlows = DataFrames.DataFrame(hour = Int[], fbus = Int[], tbus = Int[], flow = Float64[])
+            #=
             for i in 1:nL
                 flow_value = value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i], t] - θ[dLine.tbus[i], t]) * bMVA)
                 if flow_value > 0
@@ -224,6 +225,17 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
                     push!(solFlows, Dict(:hour => t, :fbus => dLine.tbus[i], :tbus => dLine.fbus[i], :flow => round(value(B[dLine.tbus[i], dLine.fbus[i]] * (θ[dLine.tbus[i]] - θ[dLine.fbus[i]])) * bMVA, digits = 3)))
                 end
             end
+            =#
+            for i in 1:nL
+                flow_value = value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i], t] - θ[dLine.tbus[i], t]) * bMVA)
+                push!(solFlows, Dict(
+                    :hour => t,
+                    :fbus => dLine.fbus[i],
+                    :tbus => dLine.tbus[i],
+                    :flow => round(flow_value, digits = 3)
+                ))
+            end
+
 
             solVoltage = DataFrames.DataFrame(hour = Int[], bus = Int[], voltageNode = Float64[], angleDegrees = Float64[])
             # solVoltage stores the voltage magnitude and angle
