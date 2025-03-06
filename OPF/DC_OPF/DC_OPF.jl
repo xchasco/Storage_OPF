@@ -1,5 +1,6 @@
 include("./Functions/dataManagerLP.jl")
 include("./Functions/susceptanceMatrix.jl")
+include("./Functions/graphManager.jl")
 
 function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN::Int, nL::Int, bMVA::Int, solver::String, hours::Int, dSolar::DataFrame, dWind::DataFrame, dStorage::DataFrame)
 
@@ -296,6 +297,9 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         
     # Calculates and includes a new line for the total operational costs, that is the value of the objective function
     push!(costs_by_hour, (hour = -1, operation_cost = objective_value(m)))
+
+    # Create a graphic representation of results
+    graphManager(nN)
 
     # Return the model "m" and the generated DataFrames for generation, flows, and angles
     return lastm, all_solGen, all_solFlows, all_solVoltage, costs_by_hour, curtailment_results, storage_results

@@ -1,7 +1,9 @@
 [deps]
 AmplNLWriter = "7c4d4715-977e-5154-bfe0-e096adeac482"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 Couenne_jll = "f09e9e23-9010-5c9e-b679-9f1d8f79b85c"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"
