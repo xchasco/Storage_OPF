@@ -1,6 +1,6 @@
 include("./Functions/dataManagerLP.jl")
 include("./Functions/susceptanceMatrix.jl")
-include("./Functions/graphManager.jl")
+#include("./Functions/graphManager.jl")
 
 function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN::Int, nL::Int, bMVA::Int, solver::String, hours::Int, dSolar::DataFrame, dWind::DataFrame, dStorage::DataFrame)
 
@@ -218,16 +218,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
             # Second column: destination node
             # Third column: power flow value in the line
             solFlows = DataFrames.DataFrame(hour = Int[], fbus = Int[], tbus = Int[], flow = Float64[])
-            #=
-            for i in 1:nL
-                flow_value = value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i], t] - θ[dLine.tbus[i], t]) * bMVA)
-                if flow_value > 0
-                    push!(solFlows, Dict(:hour => t, :fbus => dLine.fbus[i], :tbus => dLine.tbus[i], :flow => round(value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i]] - θ[dLine.tbus[i]])) * bMVA, digits = 3)))
-                elseif flow_value != 0
-                    push!(solFlows, Dict(:hour => t, :fbus => dLine.tbus[i], :tbus => dLine.fbus[i], :flow => round(value(B[dLine.tbus[i], dLine.fbus[i]] * (θ[dLine.tbus[i]] - θ[dLine.fbus[i]])) * bMVA, digits = 3)))
-                end
-            end
-            =#
+            
             for i in 1:nL
                 flow_value = value(B[dLine.fbus[i], dLine.tbus[i]] * (θ[dLine.fbus[i], t] - θ[dLine.tbus[i], t]) * bMVA)
                 push!(solFlows, Dict(
@@ -299,7 +290,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     push!(costs_by_hour, (hour = -1, operation_cost = objective_value(m)))
 
     # Create a graphic representation of results
-    graphManager(nN)
+    #graphManager(nN, dLine, all_solGen, all_solFlows, hours)
 
     # Return the model "m" and the generated DataFrames for generation, flows, and angles
     return lastm, all_solGen, all_solFlows, all_solVoltage, costs_by_hour, curtailment_results, storage_results
