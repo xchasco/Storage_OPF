@@ -58,7 +58,7 @@ while !endProgram
     end
 
     # Clean terminal
-    clearTerminal()
+    #clearTerminal()
 
     # Optimization results management
     println("Problem solved")

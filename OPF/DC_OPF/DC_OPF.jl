@@ -37,6 +37,8 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         m = Model(Gurobi.Optimizer)
         # Disable default output from the optimizer
         set_silent(m)
+        #set_optimizer_attribute(m, "DisplayInterval", 1)   # Muestra información más frecuentemente
+        #set_optimizer_attribute(m, "LogToConsole", 1)      # Asegura que el log se imprima en consola
 
     # For the HiGHS solver
     elseif solver == "HiGHS"
@@ -196,7 +198,6 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     
     ########## SOLVING ##########
     JuMP.optimize!(m) # Optimization
-
     # Save solution to DataFrames if an optimal solution is found
     if termination_status(m) == OPTIMAL || termination_status(m) == LOCALLY_SOLVED || termination_status(m) == ITERATION_LIMIT
 
@@ -278,7 +279,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
         end
 
     else
-        println("No optimal solution found for hour $hour.")
+        println("No optimal solution found")
 
         # If there is not an optimal solution for the analyzed hour, we dont include the operation cost of it.
         for t in 1:hours
@@ -287,7 +288,9 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     end
         
     # Calculates and includes a new line for the total operational costs, that is the value of the objective function
-    push!(costs_by_hour, (hour = -1, operation_cost = objective_value(m)))
+    if termination_status(m) == OPTIMAL || termination_status(m) == LOCALLY_SOLVED || termination_status(m) == ITERATION_LIMIT
+        push!(costs_by_hour, (hour = -1, operation_cost = objective_value(m)))
+    end
 
     # Create a graphic representation of results
     #graphManager(nN, dLine, all_solGen, all_solFlows, hours)

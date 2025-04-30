@@ -10,7 +10,12 @@ function resultManager(model, genSolution, flowSolution, voltageSolution, solCos
     # solCurt: Dataframe containing renewable curtailment per hour
 
     # Clear the terminal
-    clearTerminal()
+    #clearTerminal()
+
+    if model === nothing
+        println("ERROR: El modelo es 'nothing', no se ha generado correctamente.")
+        return
+    end
 
     # Display results if the optimization was successful (globally, locally, or iteration limit reached)
     if termination_status(model) == OPTIMAL || termination_status(model) == LOCALLY_SOLVED || termination_status(model) == ITERATION_LIMIT
