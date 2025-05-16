@@ -33,6 +33,11 @@ function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, b
     P_Gen_lb = SparseArrays.sparsevec(Generator.bus, Generator.Pmin / bMVA, nn)
     P_Gen_ub = SparseArrays.sparsevec(Generator.bus, Generator.Pmax / bMVA, nn)
 
+    #P_rr is a sparsevec of "nn" elements that collects:
+        # Indices: nodes where the generators are located "Generator.bus"
+        # Values: ramp rate of the respective generators "Generator.ramp_rate"
+    P_rr = SparseArrays.sparsevec(Generator.bus, Generator.Prr / bMVA, nn)
+
     # The generator data considers inactive generators with status = 0.
     # A sparsevec is created to contain these values and account for switched-off generators.
     Gen_Status = SparseArrays.sparsevec(Generator.bus, Generator.status, nn)
@@ -70,6 +75,6 @@ function dataManagerLP(Generator::DataFrame, Node::Vector{DataFrame}, nn::Int, b
     P_discharge_max = SparseArrays.sparsevec(dStorage.bus, dStorage.Pdmax / bMVA, nn)
 
     # The function returns all the generated SparseArrays as its output.
-    return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_charge, eta_discharge, P_charge_max, P_discharge_max
+    return P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_charge, eta_discharge, P_charge_max, P_discharge_max, P_rr
 
 end

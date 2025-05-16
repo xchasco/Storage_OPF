@@ -14,7 +14,7 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # dSolar:   Solar PV data
 
     ########## DATA MANAGEMENT ##########
-    P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_c, eta_d, P_s_c_max, P_s_d_max = dataManagerLP(dGen, dNodes, nN, bMVA, hours, dSolar, dWind, dStorage)
+    P_Cost0, P_Cost1, P_Cost2, P_Gen_lb, P_Gen_ub, Gen_Status, P_Demand, G_Solar, G_Wind, E_s_max, E_s_min, eta_c, eta_d, P_s_c_max, P_s_d_max, P_rr = dataManagerLP(dGen, dNodes, nN, bMVA, hours, dSolar, dWind, dStorage)
     
     # Line susceptance matrix
     B = susceptanceMatrix(dLine, nN, nL)
@@ -122,7 +122,8 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # If positive, the node supplies power to the grid;
     # if negative, it consumes power from the grid.
     # The right-hand side sums up all the flows passing through the node.
-    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i, t] + (G_Solar[i, t] + G_Wind[i, t] - P_Curt[i, t]) + (P_s_d[i, t] - P_s_c[i, t]) - P_Demand[i, t] == sum(B_t[i, j, t] * (θ[i, t] - θ[j, t]) for j in 1:nN))
+    @constraint(m, [i in 1:nN, t in 1:hours], 
+        P_G[i, t] + (G_Solar[i, t] + G_Wind[i, t] - P_Curt[i, t]) + (P_s_d[i, t] - P_s_c[i, t]) - P_Demand[i, t] == sum(B_t[i, j, t] * (θ[i, t] - θ[j, t]) for j in 1:nN))
 
     ### CURTAILMENT ###
     # We include constraints related to solar curtailment
@@ -154,6 +155,9 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Minimum and maximum power generation considering the generator status
     @constraint(m, [i in 1:nN, t in 1:hours], P_Gen_lb_t[i,t] * Gen_Status_t[i,t] <= P_G[i,t] <= P_Gen_ub_t[i,t] * Gen_Status_t[i,t])
 
+    ### "THERMAL" GENERATOR RAMPS ###
+    @constraint(m, [i in 1:nN, t in 2:hours], 
+        -P_rr[i] <= P_G[i,t] - P_G[i,t-1] <= P_rr[i])
 
     ### REFERENCE NODE ###
     # Select a reference node (node type = 3)
