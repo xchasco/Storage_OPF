@@ -80,6 +80,9 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
     # Binary variable to indicate if the battery is charging or discharging
     @variable(m, y_s[i in 1:nN, t in 1:hours], Bin)
 
+    # Binary variable to indicate if the generator is on (1) or off (0)
+    @variable(m, a[i in 1:nN, t in 1:hours], Bin)
+
     ###CONSTANTS MODIFICATIONS###
     # We need to modify the constants to be able to use them in the model, including temporal variable
     angmin_k_t = Dict((k,t) => deg2rad(dLine.angmin[k]) for k in 1:nL, t in 1:hours)
@@ -153,7 +156,8 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
 
     ### "THERMAL" GENERATOR LIMITS ###
     # Minimum and maximum power generation considering the generator status
-    @constraint(m, [i in 1:nN, t in 1:hours], P_Gen_lb_t[i,t] * Gen_Status_t[i,t] <= P_G[i,t] <= P_Gen_ub_t[i,t] * Gen_Status_t[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], a[i,t] * P_Gen_lb_t[i,t] * Gen_Status_t[i,t] <= P_G[i,t])
+    @constraint(m, [i in 1:nN, t in 1:hours], P_G[i,t] <= a[i,t] * P_Gen_ub_t[i,t] * Gen_Status_t[i,t])
 
     ### "THERMAL" GENERATOR RAMPS ###
     @constraint(m, [i in 1:nN, t in 2:hours], 
