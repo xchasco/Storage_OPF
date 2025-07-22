@@ -161,8 +161,9 @@ function DC_OPF(dLine::DataFrame, dGen::DataFrame, dNodes::Vector{DataFrame}, nN
 
     ### "THERMAL" GENERATOR RAMPS ###
     @constraint(m, [i in 1:nN, t in 2:hours], 
-        -P_rr[i] <= P_G[i,t] - P_G[i,t-1] <= P_rr[i])
-
+        -P_rr[i] * a[i,t-1] <= P_G[i,t] - P_G[i,t-1])
+    @constraint(m, [i in 1:nN, t in 2:hours], 
+        P_G[i,t] - P_G[i,t-1] <= P_rr[i] * a[i,t])
     ### REFERENCE NODE ###
     # Select a reference node (node type = 3)
     # Necessary for HiGHS to avoid an infinite loop during optimization
